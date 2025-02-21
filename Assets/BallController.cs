@@ -1,6 +1,6 @@
 using UnityEngine;
 
-public class PlayerMovement : MonoBehaviour
+public class BallController : MonoBehaviour
 {
     public float moveSpeed = 5f;
     public float jumpHeight = 2f;
