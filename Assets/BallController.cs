@@ -1,53 +1,67 @@
 using UnityEngine;
 
-public class BallController : MonoBehaviour
+public class PlayerMovement : MonoBehaviour
 {
     public float moveSpeed = 5f;
-    public float jumpForce = 5f;
-    public float friction = 0.95f; // Friction factor
-    private Rigidbody rb;
-    private bool isGrounded;
+    public float jumpHeight = 2f;
+    public float gravity = 9.81f;
+    public Transform cameraTransform;
+
+    private CharacterController controller;
+    private Vector3 moveDirection;
+    private float verticalVelocity;
 
     void Start()
     {
-        rb = GetComponent<Rigidbody>();
+        controller = GetComponent<CharacterController>();
     }
 
     void Update()
     {
-        Move();
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        float horizontal = Input.GetAxis("Horizontal"); // A/D or Left/Right
+        float vertical = Input.GetAxis("Vertical"); // W/S or Up/Down
+
+        // Get camera's forward and right directions
+        Vector3 forward = cameraTransform.forward;
+        Vector3 right = cameraTransform.right;
+        forward.y = 0;
+        right.y = 0;
+        forward.Normalize();
+        right.Normalize();
+
+        // Movement direction relative to the camera
+        Vector3 move = (forward * vertical + right * horizontal).normalized;
+
+        // Apply movement speed
+        moveDirection = move * moveSpeed;
+
+        // Gravity Handling
+        if (controller.isGrounded)
         {
-            Jump();
+            verticalVelocity = -0.1f; // Small value to keep grounded check accurate
+
+            // Jumping
+            if (Input.GetButtonDown("Jump")) // Default mapped to Space
+            {
+                verticalVelocity = Mathf.Sqrt(jumpHeight * 2f * gravity);
+            }
         }
-    }
-
-    void Move()
-    {
-        float moveX = Input.GetAxis("Horizontal");
-        float moveZ = Input.GetAxis("Vertical");
-        Vector3 movement = new Vector3(moveX, 0f, moveZ) * moveSpeed;
-        rb.AddForce(movement, ForceMode.Force);
-        ApplyFriction();
-    }
-
-    void ApplyFriction()
-    {
-
-            rb.linearVelocity = new Vector3(rb.linearVelocity.x * friction, rb.linearVelocity.y, rb.linearVelocity.z * friction);
-    }
-
-    void Jump()
-    {
-        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
-        isGrounded = false;
-    }
-
-    void OnCollisionEnter(Collision collision)
-    {
-        if (collision.gameObject.CompareTag("Ground"))
+        else
         {
-            isGrounded = true;
+            verticalVelocity -= gravity * Time.deltaTime; // Apply gravity when in the air
+        }
+
+        // Apply vertical movement (jumping/gravity)
+        moveDirection.y = verticalVelocity;
+
+        // Move the player
+        controller.Move(moveDirection * Time.deltaTime);
+
+        // Rotate player towards movement direction
+        if (move.magnitude > 0.1f)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(move);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * 10f);
         }
     }
 }
